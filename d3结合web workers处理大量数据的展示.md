@@ -115,7 +115,9 @@ simpleChart.prototype.renderChart = function () {
 }
 ```
 
-#### 引入web workers解决绘图延迟
+
+
+### 引入web workers解决绘图延迟
 
 web workers的特点是**多进程**，独立运行于主线程外的后台线程，从而允许主线程不被阻塞或放慢。
 
@@ -132,3 +134,114 @@ web workers的特点是**多进程**，独立运行于主线程外的后台线�
 > 3、第一批绘制完成后，主线程告知workers提供第二批数据
 >
 > 4、依次进行，直到最后一批数据绘制完成
+
+#### worker.js
+
+```js
+onmessage = function(e) {
+  console.log('Worker: Message received from main script');
+  postMessage(e.data.data);
+}
+```
+
+#### 调用 workers 绘图
+
+```js
+// 调用 web workers
+function connectWorkers (data, sc) {
+  const myWorker = new Worker("worker.js");
+
+  myWorker.postMessage({
+    data: data, // 源数据拿一次即可
+    over: false, // 表示可以开始提供数据了
+  });
+
+  // workers
+  myWorker.onmessage = function(e) {
+    // 把渲染图形放到 workers 响应里
+    sc.renderChart(e.data)
+  };
+}
+```
+
+#### 生成数据
+
+```js
+let data = createData()
+let sc = new simpleChart({
+     $ele: $svgWrap,
+     data: data
+})
+
+// 生成数据和svg后，调用workers绘图
+connectWorkers(data, sc)
+```
+
+
+
+### 优化 worker.js
+
+优化 `worker.js` 处理大量数据
+
+#### 改进版 worker.js
+
+```js
+/**
+ * @description 通过 web workers 分批绘制数据
+ */
+let worker = {
+  pageSize: 10000,
+  data: [],
+
+  spliceDataHandle: function() {
+    let spliceData = worker.data.splice(0, worker.pageSize)
+
+    return spliceData
+  },
+
+  checkOver: function() {
+    return worker.data.length === 0 ? true : false
+  }
+}
+
+onmessage = function(e) {
+  console.log('Worker: Message received from main script');
+
+  if (e.data.data) {
+    worker.data = e.data.data
+  }
+
+  postMessage({
+    data: worker.spliceDataHandle(),
+    over: worker.checkOver()
+  });
+}
+```
+
+#### 调用 workers
+
+```js
+// 调用 web workers
+function connectWorkers (data, sc) {
+  const myWorker = new Worker("worker.js");
+
+  myWorker.postMessage({
+    data: data, // 源数据拿一次即可
+    over: false, // 表示可以开始提供数据了
+  });
+
+  // workers
+  myWorker.onmessage = function(e) {
+    sc.renderChart(e.data.data)
+    if (!e.data.over) {
+      myWorker.postMessage({
+        over: false, // 表示可以开始提供数据了
+      });
+    } else {
+      console.log('workers 提供数据完毕')
+    }
+  };
+}
+```
+
+一次性插入十万条数据绘制而不采用 `web workers` ，除去获取数据的时间，还有很明显的绘图延迟。采用 `web workers` 后，在获取到完整的数据分批绘制，可以明显的看到有一屏瞬开展示，然后依次展示后续的数据。

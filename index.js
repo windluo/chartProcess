@@ -37,7 +37,8 @@ simpleChart.prototype.renderChart = function (data) {
     .attr("cy", function(d, i) { return d.y; })
     .attr("r", function(d) { return d.r; });
 
-  circle.exit().remove();
+  // 既然是异步绘图，就不能有这个了
+  // circle.exit().remove();
 
   console.log('绘图完成！')
 }
@@ -67,7 +68,7 @@ function calculateCoordinates () {
 
 function createData () {
   let data = []
-  let max = 10
+  let max = 100000
 
   for (var i = 1; i <= max; i++) {
     let post = calculateCoordinates()
@@ -94,13 +95,19 @@ function connectWorkers (data, sc) {
 
   myWorker.postMessage({
     data: data, // 源数据拿一次即可
-    over: true, // 表示可以开始提供数据了
+    over: false, // 表示可以开始提供数据了
   });
 
   // workers
   myWorker.onmessage = function(e) {
-    console.log(e.data)
-    sc.renderChart(e.data)
+    sc.renderChart(e.data.data)
+    if (!e.data.over) {
+      myWorker.postMessage({
+        over: false, // 表示可以开始提供数据了
+      });
+    } else {
+      console.log('workers 提供数据完毕')
+    }
   };
 }
 
@@ -117,5 +124,6 @@ setTimeout(() => {
   })
 
   connectWorkers(data, sc)
+  // sc.renderChart(data)
   console.timeEnd('绘图：')
 }, 1000);
