@@ -75,7 +75,7 @@ function createData () {
 
 分别生成一千条、一万条、十万条数据绘图。绘图的时间差距特别明显：
 
-![001](D:\webproject\chartProcess\images\001.png)
+![001](<https://github.com/windluo/chartProcess/blob/master/images/001.png>)
 
 从上图可以看到，十万条数据绘图的时间基本在2000ms左右徘徊，一万条和一千条数据的绘图时间都在500ms以下。
 
