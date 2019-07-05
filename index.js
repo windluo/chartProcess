@@ -26,13 +26,11 @@ simpleChart.prototype.createChart = function () {
                 .append('svg')
                 .attr('width', this.width)
                 .attr('height', this.height);
-  
-  this.renderChart()
 }
 
 // 拆分渲染
-simpleChart.prototype.renderChart = function () {
-  let circle = this.$svg.selectAll("circle").data(this.data, function(d) { return d.number; })
+simpleChart.prototype.renderChart = function (data) {
+  let circle = this.$svg.selectAll("circle").data(data, function(d) { return d.number; })
   circle.enter()
     .append("circle")
     .attr("cx", function(d, i) { return d.x; })
@@ -69,7 +67,7 @@ function calculateCoordinates () {
 
 function createData () {
   let data = []
-  let max = 100000
+  let max = 10
 
   for (var i = 1; i <= max; i++) {
     let post = calculateCoordinates()
@@ -90,19 +88,34 @@ function createRandomNum (max) {
   return Math.floor(Math.random() * max)
 }
 
+// 调用 web workers
+function connectWorkers (data, sc) {
+  const myWorker = new Worker("worker.js");
+
+  myWorker.postMessage({
+    data: data, // 源数据拿一次即可
+    over: true, // 表示可以开始提供数据了
+  });
+
+  // workers
+  myWorker.onmessage = function(e) {
+    console.log(e.data)
+    sc.renderChart(e.data)
+  };
+}
+
 let $svgWrap = document.getElementById('svgWrap')
 setTimeout(() => {
   console.time('生成数据：')
   let data = createData()
   console.timeEnd('生成数据：')
 
-  let strData = JSON.stringify(data)
-  console.log('数据长度：' + strData.length)
-
   console.time('绘图：')
   let sc = new simpleChart({
     $ele: $svgWrap,
     data: data
   })
+
+  connectWorkers(data, sc)
   console.timeEnd('绘图：')
 }, 1000);
