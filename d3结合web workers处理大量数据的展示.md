@@ -139,6 +139,8 @@ web workers的特点是**多进程**，独立运行于主线程外的后台线�
 
 #### worker.js
 
+由于 Worker 不能读取本地文件，所以这个脚本必须来自网络，本地跑的话要搭一个服务，比如用`nginx`。
+
 ```js
 onmessage = function(e) {
   console.log('Worker: Message received from main script');
@@ -251,3 +253,9 @@ function connectWorkers (data, sc) {
 web workers 的兼容性还不错：
 
 ![001](<https://github.com/windluo/chartProcess/blob/master/images/002.png>)
+
+### web worker 与 Service worker 对比
+
+web worker 独立于主线程，不能操作 DOM，不同页面间不能共享，页面关闭后即消失，兼容性相对较好。
+
+service worker 也独立于主线程，不能操作 DOM，需要下载安装，可以离线。按同源策略可以服务于多个页面，页面关闭依然会存在。兼容性较差。
